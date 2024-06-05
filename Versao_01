@@ -1,0 +1,189 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Estrutura da árvore binária para passageiros
+struct tree {
+    char nome[30];
+    struct tree *left;
+    struct tree *right;
+};
+
+// Estrutura do nó da fila de voos
+struct node {
+    struct node *prox;
+    char Id[8];
+    char Destino[4];
+    char Empresa[20];
+    char Modelo[20];
+    int Np;
+    struct tree *lp;
+};
+
+// Estrutura da fila de voos
+struct queue {
+    struct node *front;
+    struct node *rear;
+};
+
+struct queue *voo;
+
+// Função para criar uma nova árvore binária (passageiro)
+struct tree* newTreeNode(char *nome) {
+    struct tree *temp = (struct tree*)malloc(sizeof(struct tree));
+    strcpy(temp->nome, nome);
+    temp->left = temp->right = NULL;
+    return temp;
+}
+
+// Função para inserir um passageiro na árvore binária
+struct tree* insert(struct tree* node, char *nome) {
+    if (node == NULL) return newTreeNode(nome);
+    if (strcmp(nome, node->nome) < 0)
+        node->left = insert(node->left, nome);
+    else if (strcmp(nome, node->nome) > 0)
+        node->right = insert(node->right, nome);
+    return node;
+}
+
+// Função para criar um novo nó na fila de voos
+struct node* newNode(char *Id, char *Destino, char *Empresa, char *Modelo, int Np) {
+    struct node *temp = (struct node*)malloc(sizeof(struct node));
+    strcpy(temp->Id, Id);
+    strcpy(temp->Destino, Destino);
+    strcpy(temp->Empresa, Empresa);
+    strcpy(temp->Modelo, Modelo);
+    temp->Np = Np;
+    temp->lp = NULL;
+    temp->prox = NULL;
+    return temp;
+}
+
+// Função para inicializar a fila
+struct queue* createQueue() {
+    struct queue* q = (struct queue*)malloc(sizeof(struct queue));
+    q->front = q->rear = NULL;
+    return q;
+}
+
+// Função para adicionar um voo na fila
+void enQueue(struct queue* q, char *Id, char *Destino, char *Empresa, char *Modelo, int Np) {
+    struct node *temp = newNode(Id, Destino, Empresa, Modelo, Np);
+    if (q->rear == NULL) {
+        q->front = q->rear = temp;
+        return;
+    }
+    q->rear->prox = temp;
+    q->rear = temp;
+}
+
+// Função para listar passageiros em ordem alfabética (inorder traversal)
+void inorder(struct tree *root, FILE *file) {
+    if (root != NULL) {
+        inorder(root->left, file);
+        printf("%s\n", root->nome);
+        fprintf(file, "%s\n", root->nome);
+        inorder(root->right, file);
+    }
+}
+
+// Função para buscar um voo pelo ID e listar seus passageiros
+void listarPassageiros(struct queue* q, char *Id) {
+    struct node *temp = q->front;
+    while (temp != NULL) {
+        if (strcmp(temp->Id, Id) == 0) {
+            printf("Voo: %s\nDestino: %s\nEmpresa: %s\nModelo: %s\n", temp->Id, temp->Destino, temp->Empresa, temp->Modelo);
+            FILE *file = fopen("passageiros.txt", "w");
+            if (file == NULL) {
+                printf("Erro ao abrir o arquivo\n");
+                return;
+            }
+            fprintf(file, "Voo: %s\nDestino: %s\nEmpresa: %s\nModelo: %s\nPassageiros:\n", temp->Id, temp->Destino, temp->Empresa, temp->Modelo);
+            inorder(temp->lp, file);
+            fclose(file);
+            printf("Quantidade de passageiros: %d\n", temp->Np);
+            return;
+        }
+        temp = temp->prox;
+    }
+    printf("Voo nao encontrado\n");
+}
+
+// Função para cadastrar um novo passageiro em um voo
+void cadastrarPassageiro(struct queue* q, char *Id, char *nome) {
+    struct node *temp = q->front;
+    while (temp != NULL) {
+        if (strcmp(temp->Id, Id) == 0) {
+            temp->lp = insert(temp->lp, nome);
+            temp->Np++;
+            return;
+        }
+        temp = temp->prox;
+    }
+    printf("Voo nao encontrado\n");
+}
+
+// Função para sair do programa e liberar a memória
+void liberarMemoria(struct tree *root) {
+    if (root != NULL) {
+        liberarMemoria(root->left);
+        liberarMemoria(root->right);
+        free(root);
+    }
+}
+
+void liberarFila(struct queue* q) {
+    struct node *temp = q->front;
+    while (temp != NULL) {
+        struct node *prox = temp->prox;
+        liberarMemoria(temp->lp);
+        free(temp);
+        temp = prox;
+    }
+    free(q);
+}
+
+int main() {
+    voo = createQueue();
+    int opcao;
+    char Id[8], Destino[4], Empresa[20], Modelo[20], nome[30];
+    int Np;
+
+    do {
+        printf("1. Cadastrar voo\n2. Listar passageiros\n3. Sair\nEscolha uma opcao: ");
+        scanf("%d", &opcao);
+        switch (opcao) {
+            case 1:
+                printf("Digite o ID do voo: ");
+                scanf("%s", Id);
+                printf("Digite o destino do voo: ");
+                scanf("%s", Destino);
+                printf("Digite a empresa do voo: ");
+                scanf("%s", Empresa);
+                printf("Digite o modelo do voo: ");
+                scanf("%s", Modelo);
+                printf("Digite o numero de passageiros: ");
+                scanf("%d", &Np);
+                enQueue(voo, Id, Destino, Empresa, Modelo, Np);
+                for (int i = 0; i < Np; i++) {
+                    printf("Digite o nome do passageiro %d: ", i + 1);
+                    scanf("%s", nome);
+                    cadastrarPassageiro(voo, Id, nome);
+                }
+                break;
+            case 2:
+                printf("Digite o ID do voo para listar os passageiros: ");
+                scanf("%s", Id);
+                listarPassageiros(voo, Id);
+                break;
+            case 3:
+                liberarFila(voo);
+                printf("Programa encerrado.\n");
+                break;
+            default:
+                printf("Opcao invalida\n");
+        }
+    } while (opcao != 3);
+
+    return 0;
+}
