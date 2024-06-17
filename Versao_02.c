@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Estrutura da árvore binária para passageiros
 typedef struct tree {
@@ -27,19 +28,24 @@ typedef struct queue {
     Node *rear;
 }Queue;
 
+// -=-=-=-=-=-=-=-=-=-=-= FUNÇÕES =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+void flushBuffer() {
+    while (getchar() != '\n');
+}
+
 // -=-=-=-=-=-=-=-=-=-=-= FILA =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// Função para inicializar a fila
+// inicializa a fila
 Queue* createQueue() {
     Queue* q = (Queue*)malloc(sizeof(Queue));
     if (q == NULL){
         printf("Falha ao alocar memoria!\n");
         exit(1);
     }
-    q->front = q->rear = (Node *)NULL;
+    q->front = q->rear = NULL;
     return q;
 }
 
-// Função para criar um novo nó na fila de voos
+// cria um novo nó na fila de voos
 Node *newNode(char *Id, char *Destino, char *Empresa, char *Modelo, int Np) {
     Node *temp = (Node*)malloc(sizeof(Node));
     if (temp==NULL) {
@@ -57,7 +63,7 @@ Node *newNode(char *Id, char *Destino, char *Empresa, char *Modelo, int Np) {
     return temp;
 }
 
-// Função para adicionar um voo na fila
+// adiciona um voo na fila
 Queue *enQueue(Queue *q, Node *n) {
     if (q->front == NULL) {
         q->front = q->rear = n;
@@ -97,8 +103,19 @@ int queueSize(Queue *q) {
     return size;
 }
 
+void listaVoo(Node *n){
+    printf("%-10s  %-10s  %-10s  %-20s  %-10d\n", n->Id, n->Destino, n->Empresa, n->Modelo, n->Np);
+}
+void percorre_fila(Node *n) {
+    Node *aux = n;
+    while (aux != NULL) {
+        listaVoo(aux);
+        aux = aux->prox;
+    }
+}
+
 // -=-=-=-=-=-=-=-=-=-=-=-=-= ARVORE =-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// Função para criar uma nova árvore binária (passageiro)
+// Cria uma novo nó na árvore (passageiro)
 Passageiros *newTreeNode(char *nome) {
     Passageiros *temp = (Passageiros*)malloc(sizeof(Passageiros));
     if (temp == NULL) {
@@ -111,7 +128,7 @@ Passageiros *newTreeNode(char *nome) {
     return temp;
 }
 
-// Função para inserir um passageiro na árvore binária
+// Adiciona um passageiro na árvore binária
 Passageiros *insertTree(Passageiros *root, Passageiros *r, char *nome) {
     if (r == NULL) {
         r = newTreeNode(nome);
@@ -123,12 +140,12 @@ Passageiros *insertTree(Passageiros *root, Passageiros *r, char *nome) {
         } else root->right = r;
         return r;        
     }
-    if (strcmp(nome, root->nome) < 0) {
+    if (strcmp(nome, r->nome) < 0) 
         insertTree(r, r->left, nome);
-    } else insertTree(r,r->right, nome);
+    else insertTree(r,r->right, nome);
 }
 
-// Função para remover um passageiro da árvore
+// Remove um passageiro da árvore
 Passageiros *removeTree(Passageiros *root, char *nome) {
     Passageiros *p, *p2;
     if (strcmp(root->nome, nome) == 0) { // apagar a raiz
@@ -166,7 +183,7 @@ Passageiros *removeTree(Passageiros *root, char *nome) {
     return root;
 }
 
-// Função para listar passageiros em ordem alfabética (inorder traversal)
+// Lista os passageiros em ordem alfabética (inorder traversal)
 void inorder(Passageiros *root, FILE *file) {
     if (root != NULL) {
         inorder(root->left, file);
@@ -176,40 +193,57 @@ void inorder(Passageiros *root, FILE *file) {
     }
 }
 
+int numPass(Passageiros *root) {
+    if (root == NULL)
+        return 0;
+    return numPass(root->left) + numPass(root->right) + 1;
+}
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// Função para cadastrar um novo passageiro em um voo
 void cadastrarPassageiro(Node *n) {
     char nome[30];
-    int numPass;
+    int num;
     if (n == NULL)
         return;
-    printf("Insira o numero de passageiros: ");
-    scanf("%d", &numPass);
-    for (int i = 0; i < numPass; i++) {
+
+    if (numPass(n->lp) == n->Np) {
+        printf("Voo cheio\n");
+        return;
+    } else printf("Acentos livre: %d/%d\n", n->Np-numPass(n->lp), n->Np);
+    
+    printf("Insira o numero de passageiros a cadastrar: ");
+    scanf("%d", &num);
+    flushBuffer();
+    if (num+numPass(n->lp) > n->Np) {
+        printf("impossivel adicionar esse numero de passageiros\n");
+        return;
+    }
+
+    for (int i = 0; i < num; i++) {
         printf("Informe o nome: ");
-        scanf("%s", nome);
+        scanf("%[^\n]s", nome);
+        flushBuffer();
         if (n->lp == NULL)
             n->lp = insertTree(n->lp, n->lp, nome);
         else insertTree(n->lp, n->lp, nome);
     }
-    
 }
-// Função para remover um passageiro de um voo
+
 void removerPassageiro(Node *n) {
     char nome[30];
     if (n == NULL)
         return;
-    printf("Informe o nome: ");
-    scanf("%s", nome);
     if (n->lp == NULL) {
         printf("Voo vazio!\n");
         return;
     }
+    
+    printf("Informe o nome: ");
+    scanf("%[^\n]s", nome);
+    flushBuffer();
     removeTree(n->lp, nome);
 }
 
-// Função para buscar um voo pelo ID
 Node *buscarVoo(Queue *q, char *Id) {
     Node *temp = q->front;
     if (q == NULL) {
@@ -225,27 +259,32 @@ Node *buscarVoo(Queue *q, char *Id) {
     printf("Voo nao encontrado!\n");
     return NULL;
 }
-// listar passageiros de um voo
+
 void listaPassageiros(Node *n) {
-    if (n == NULL) {
+    if (n == NULL) 
+        return;
+    if (n->lp == NULL) {
+        printf("Voo vazio!\n");
         return;
     }
     
     printf("%-10s  %-10s  %-10s  %-20s  %-10s\n", "ID do voo", "Destino", "Empresa", "Modelo", "Nº Passageiros");
+    printf("%-10s  %-10s  %-10s  %-20s  %-10d\n", n->Id, n->Destino, n->Empresa, n->Modelo, n->Np);
+    printf("Passageiros: %d/%d\n", numPass(n->lp), n->Np);
+
+    // imprime passageiros no arquivo
     FILE *file = fopen("passageiros.txt", "w");
     if (file == NULL) {
         printf("Erro ao abrir o arquivo\n");
         return;
     }
     fprintf(file, "%-10s  %-10s  %-10s  %-20s  %-10s\n", "ID do voo", "Destino", "Empresa", "Modelo", "Nº Passageiros");
-    fprintf(file, "%-10s  %-10s  %-10s  %-20s  %-10s\n", n->Id, n->Destino, n->Empresa, n->Modelo, n->Np);
+    fprintf(file, "%-10s  %-10s  %-10s  %-20s  %-10d\n", n->Id, n->Destino, n->Empresa, n->Modelo, n->Np);
+    fprintf(file,"Passageiros: %d/%d\n", numPass(n->lp), n->Np);
     inorder(n->lp, file);
     fclose(file);
-    printf("Quantidade de passageiros: %d\n", n->Np);
-    return;
 }
 
-// Função para sair do programa e liberar a memória
 Passageiros *liberaArvore(Passageiros *root) {
     if (root != NULL) {
         liberaArvore(root->left);
@@ -266,16 +305,6 @@ Queue *liberaFila(Queue* q) {
     free(q);
     return q;
 }
-void listaVoo(Node *n){
-    printf("%-10s  %-10s  %-10s  %-20s  %-10d\n", n->Id, n->Destino, n->Empresa, n->Modelo, n->Np);
-}
-void percorre_fila(Node *n) {
-    Node *aux = n;
-    while (aux != NULL) {
-        listaVoo(aux);
-        aux = aux->prox;
-    }
-}
 
 int main() {
     Queue *voos = createQueue();
@@ -294,40 +323,49 @@ int main() {
         printf("8. Listar passageiros\n");
         printf("9. Sair\n");
         printf("Escolha uma opcao: ");
+        
         scanf("%d", &opcao);
+        flushBuffer();
         printf("\n");
         switch (opcao) {
             case 1:
                 // cadastrar voo
-                printf("-=-=-=-=-=-= CADASTRAR VOO =-=-=-=-=-=-\n");
+                printf("-=-=-=-=-=-= CADASTRAR VOO =-=-=-=-=-=-\n");   
                 printf("Digite o ID do voo: ");
                 scanf("%s", Id);
-                printf("Digite o destino do voo: ");
+                flushBuffer();
+                printf("Digite o destino do voo [IATA]: ");
                 scanf("%s", Destino);
+                flushBuffer();
                 printf("Digite a empresa do voo: ");
                 scanf("%s", Empresa);
-                printf("Digite o modelo do voo: ");
-                scanf("%s", Modelo);
-                printf("Digite o numero de passageiros: ");
+                flushBuffer();
+                printf("Digite o modelo da aeronave: ");
+                scanf("%[^\n]s", Modelo);
+                flushBuffer();
+                printf("Digite o numero maximo de passageiros: ");
                 scanf("%d", &Np);
-                voos = enQueue(voos, newNode(Id, Destino, Empresa, Modelo, Np));
-                printf("       -=-=-=-=-=-=-=-=-=-=-=-\n");
+                flushBuffer();
+                voos = enQueue(voos, newNode(strupr(Id), strupr(Destino), strupr(Empresa), strupr(Modelo), Np));
+                printf("        -=-=-=-=-=-=-=-=-=-=-=-\n");
                 break;
             case 2:
                 // cadastrar nomes
                 printf("-=-=-=-=-=-= CADASTRAR NOMES =-=-=-=-=-=-\n");
-                printf("Informe o codigo do voo: ");
+                printf("Informe o ID do voo: ");
                 scanf("%s", Id);
-                cadastrarPassageiro(buscarVoo(voos, Id));
+                flushBuffer();
+                cadastrarPassageiro(buscarVoo(voos, strupr(Id)));
                 printf("         -=-=-=-=-=-=-=-=-=-=-=-\n");
                 break;
             case 3:
                 // remover nomes
                 printf("-=-=-=-=-=-= REMOVER NOME =-=-=-=-=-=-\n");
-                printf("Informe o codigo do voo: ");
+                printf("Informe o ID do voo: ");
                 scanf("%s", Id);
-                removerPassageiro(buscarVoo(voos, Id));
-                printf("      -=-=-=-=-=-=-=-=-=-=-=-\n");
+                flushBuffer();
+                removerPassageiro(buscarVoo(voos, strupr(Id)));
+                printf("        -=-=-=-=-=-=-=-=-=-=-\n");
                 break;
             case 4:
                 // Caracteristicas do primeiro voo da fila
@@ -347,8 +385,8 @@ int main() {
             case 6:
                 // Tamanho da fila de decolagem
                 printf("-=-=-=-=-=-= Tamanho da fila =-=-=-=-=-=-\n");
-                printf("%d voos na fila", queueSize(voos));
-                printf("           -=-=-=-=-=-=-=-=-=-=-=-\n");
+                printf("%d voos na fila\n", queueSize(voos));
+                printf("         -=-=-=-=-=-=-=-=-=-=-=-\n");
                 break;
             case 7:
                 // Listar voos
@@ -357,14 +395,15 @@ int main() {
                     printf("%-10s  %-10s  %-10s  %-20s  %-10s\n", "ID do voo", "Destino", "Empresa", "Modelo", "Nº Passageiros");
                     percorre_fila(voos->front);
                 } else printf(" Sem voos no momento\n");
-                printf("       -=-=-=-=-=-=-=-=-=-=-=-\n");
+                printf("        -=-=-=-=-=-=-=-=-=-=-=-\n");
                 break;
             case 8:
                 // Listar passageiros
                 printf("-=-=-=-=-=-= LISTA DE PASSAGEIROS =-=-=-=-=-=-\n");
                 printf("Digite o ID do voo para listar os passageiros: ");
                 scanf("%s", Id);
-                listaPassageiros(buscarVoo(voos, Id));
+                flushBuffer();
+                listaPassageiros(buscarVoo(voos, strupr(Id)));
                 printf("           -=-=-=-=-=-=-=-=-=-=-=-\n");
                 break;
             case 9:
@@ -374,6 +413,7 @@ int main() {
                 break;
             default:
                 printf("Opcao invalida\n");
+                break;
         }
         printf("\n");
     } while (opcao != 9);
